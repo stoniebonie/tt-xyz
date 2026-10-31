@@ -54,7 +54,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--ball);outline-o
 .seg{display:flex;gap:6px;flex-wrap:wrap}
 .seg button{padding:8px 14px;border-radius:8px;border:1px solid var(--edge);background:transparent}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--arena);border-color:var(--ink);font-weight:700}
-.picker{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.picker{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 @media (max-width:520px){.picker{grid-template-columns:1fr}}
 .picker button{text-align:left;padding:12px 14px;border-radius:10px;border:1px solid var(--edge);background:rgba(255,255,255,.02);display:flex;flex-direction:column;gap:3px;min-width:0}
 .picker button b{font-family:var(--display);font-weight:400;font-size:18px}
@@ -130,7 +130,6 @@ kbd{font-family:var(--body);font-size:12px;border:1px solid var(--edge);border-b
       <div class="label">Spiel</div>
       <div class="picker" id="gamePick">
         <button type="button" data-g="tt" aria-pressed="true"><b>Tischtennis</b><span>Gegen den Bot, bis 11</span></button>
-        <button type="button" data-g="darts" aria-pressed="false"><b>Darts</b><span>5 Runden gegen den Bot</span></button>
         <button type="button" data-g="golf" aria-pressed="false"><b>Minigolf</b><span>6 Löcher, so wenig Schläge wie möglich</span></button>
       </div>
     </div>
@@ -207,20 +206,6 @@ kbd{font-family:var(--body);font-size:12px;border:1px solid var(--edge);border-b
       <div class="seg" id="runSeg">
         <button type="button" data-r="auto" aria-pressed="true">Automatisch</button>
         <button type="button" data-r="tilt" aria-pressed="false">Selbst (kippen)</button>
-      </div>
-    </div>
-    <div>
-      <div class="label">Darts: Hoch und runter</div>
-      <div class="seg" id="invSeg">
-        <button type="button" data-i="0" aria-pressed="true">Normal</button>
-        <button type="button" data-i="1" aria-pressed="false">Umgekehrt</button>
-      </div>
-    </div>
-    <div>
-      <div class="label">Darts: Links und rechts</div>
-      <div class="seg" id="invHSeg">
-        <button type="button" data-i="0" aria-pressed="true">Normal</button>
-        <button type="button" data-i="1" aria-pressed="false">Umgekehrt</button>
       </div>
     </div>
     <label class="slider">Kipp-Empfindlichkeit <output id="tiltOut">4</output>
@@ -316,10 +301,10 @@ function playerHit(serve){const b=S.ball,p=S.pad;const pw=p.swingP,v=p.swingV;p.
   const off=serve?0:(b.z-PZ)/.4;let tx;
   if(!PAD.on)tx=serve?clamp(p.vx*.08+(Math.random()-.5)*.5,-.6,.6):clamp(-off*.55+p.vx*.06+(Math.random()-.5)*.08,-.9,.9);
   else tx=clamp(p.ang*.7-off*.3+(Math.random()-.5)*.06,-.92,.92);
-  let spin=0,T=1.08-pw*.42,tz=1.75+pw*.95+Math.random()*.08,name='';
-  if(!serve&&v<-.3&&b.y>.3&&pw>.5){spin=.15;T=.4+(1-pw)*.18;tz=2.05+Math.random()*.5;name='Schmetterball!';}
-  else if(v>.3){spin=clamp(v,.3,1);T=1.02-pw*.45;tz=1.85+pw*.85+Math.random()*.08;name='Topspin';}
-  else if(v<-.3){spin=clamp(v,-1,-.3);T=1.18-pw*.3;tz=1.6+pw*.75;name='Unterschnitt';}
+  let spin=0,T=1.08-pw*.42,tz=1.7+pw*.75+(Math.random()-.5)*.12,name='';
+  if(!serve&&v<-.3&&b.y>.3&&pw>.5){spin=.15;T=.4+(1-pw)*.18;tz=2.0+Math.random()*.45;name='Schmetterball!';}
+  else if(v>.3){spin=clamp(v,.3,1);T=1.02-pw*.45;tz=1.8+pw*.7+(Math.random()-.5)*.1;name='Topspin';}
+  else if(v<-.3){spin=clamp(v,-1,-.3);T=1.18-pw*.3;tz=1.6+pw*.65;name='Unterschnitt';}
   if(name&&!serve&&name!=='Schmetterball!')name=(b.x>=p.x?'Vorhand-':'Rückhand-')+name;
   launch(tx,tz,T,spin);S.hitBy=0;if(!serve)S.rally++;
   if(name)S.label={text:name,t:now};
@@ -378,7 +363,7 @@ function update(raw){
   p.x+=(p.tx-p.x)*Math.min(1,dt*(auto?7:20));p.vx=(p.x-ox)/Math.max(dt,1e-3);
   if(!PAD.on)p.tAng=clamp(-p.vx*.08,-.5,.5);
   p.ang+=(p.tAng-p.ang)*Math.min(1,dt*14);
-  const ty=(S.live&&S.hitBy===1&&b.z<1.4)?clamp(b.y,.08,.75):.28;p.y+=(ty-p.y)*Math.min(1,dt*10);
+  const ty=(S.live&&S.hitBy===1&&b.z<1.4)?clamp(.12+b.y*.5,.14,.42):.26;p.y+=(ty-p.y)*Math.min(1,dt*3.5);
   const bt=S.bot,sp=diff().speed*dt;bt.x+=clamp(bt.tx-bt.x,-sp,sp);bt.y+=(bt.ty-bt.y)*Math.min(1,dt*6);bt.ang*=Math.max(0,1-dt*2);
   cam.x+=((S.live?b.x*.18:0)+p.x*.12-cam.x)*Math.min(1,dt*2.5);}
 
@@ -462,117 +447,6 @@ function start(){S.score=[0,0];send({t:'score',s:'0 : 0'});setupServe();}
 return{start,update,draw,swing,pointer,key,hud,
   lede:'Spiel gegen den Bot wie bei Wii Sports. Deine Figur läuft automatisch zum Ball. Handy schräg halten lenkt den Ball, das Timing auch. Von unten nach oben schwingen gibt Topspin, von oben nach unten Unterschnitt, und ein harter Schlag nach unten auf einen hohen Ball wird zum Schmetterball.',
   keys:'Ohne Handy: Maus bewegt den Schläger, Klick schlägt. Maus beim Klicken nach oben ziehen = Topspin, nach unten = Unterschnitt. Tastatur: <kbd>←</kbd> <kbd>→</kbd> und <kbd>Leertaste</kbd>.'};
-}
-
-/* =========================================================
-   DARTS
-   ========================================================= */
-function makeDarts(){
-const ORDER=[20,1,18,4,13,6,10,15,2,17,3,19,7,16,8,11,14,9,12,5];
-const SIG={leicht:50,mittel:31,schwer:17};
-const ROUNDS=5;
-const D={round:1,turn:0,dart:0,score:[0,0],roundPts:0,stuck:[],fly:null,aim:{x:0,y:-60},tAim:{x:0,y:-60},wait:0,next:null,log:[[],[]]};
-let sc=1,cx=0,cy=0;
-const playing=()=>app.mode==='play'&&app.game==='darts';
-function layout(){const R=Math.max(80,Math.min(W*.44,(H-150)*.5));sc=R/226;cx=W/2;cy=Math.max(H*.5+18,70+R);}
-function scoreAt(x,y){const r=Math.hypot(x,y);
-  if(r<=6.35)return{pts:50,label:'Bull'};
-  if(r<=15.9)return{pts:25,label:'25'};
-  if(r>170)return{pts:0,label:'Daneben'};
-  const th=Math.atan2(-y,x)*180/Math.PI;const cw=((90-th+9)%360+360)%360;const n=ORDER[Math.floor(cw/18)%20];
-  if(r>=99&&r<=107)return{pts:n*3,label:'T'+n};
-  if(r>=162)return{pts:n*2,label:'D'+n};
-  return{pts:n,label:String(n)};}
-function tremor(){return{x:Math.sin(now*3.1)*3+Math.sin(now*7.3)*1.5,y:Math.cos(now*2.6)*3+Math.sin(now*6.1)*1.5};}
-function turnStart(t){D.turn=t;D.dart=0;D.roundPts=0;D.stuck=[];
-  if(t===0)toast('Runde '+D.round+': Du',PAD.on?'Zielen durch Kippen, werfen mit kurzem Ruck nach vorn':'Zielen mit der Maus, Klick wirft',1800);
-  else{toast('Bot wirft','');D.wait=now+1.2;}
-  hud();}
-function throwAt(x,y,who){D.fly={x,y,t:now,who};send(who===0?{t:'hit'}:{t:'noop'});}
-function swing(p){if(!playing()||D.turn!==0||D.fly||D.dart>=3||now<D.wait)return;
-  const tr=tremor();const off=(.6-p)*140;
-  throwAt(D.aim.x+tr.x+gauss()*6,D.aim.y+tr.y+off+gauss()*6,0);}
-function botThrow(){const s=SIG[app.diff];let tx=0,ty=-103;
-  if(D.dart===2&&Math.random()<.25){tx=0;ty=0;}
-  throwAt(tx+gauss()*s,ty+gauss()*s,1);D.wait=now+1.0;}
-function land(){const f=D.fly;D.fly=null;const r=scoreAt(f.x,f.y);
-  D.stuck.push({x:f.x,y:f.y,who:f.who,t:now});D.dart++;D.roundPts+=r.pts;D.score[f.who]+=r.pts;D.log[f.who].push(r.pts);
-  sfx(r.pts?'thud':'wall');toast(r.label+(r.pts&&r.label!==String(r.pts)?'  ·  '+r.pts:''),r.label==='T20'?'Volltreffer!':'',900);
-  if(f.who===0){D.wait=now+.35;send({t:'score',s:D.score[0]+' : '+D.score[1]});}
-  hud();
-  if(D.dart>=3){const who=D.turn;D.next={at:now+1.4,fn:()=>{
-      toast((who===0?'Deine Runde: ':'Bot: ')+D.roundPts+' Punkte','',1100);
-      D.next={at:now+1.1,fn:()=>{
-        if(who===0)turnStart(1);
-        else{D.round++;if(D.round>ROUNDS)finish();else turnStart(0);}}};}};}}
-function finish(){const[a,b]=D.score;
-  const row=i=>`<td>${D.log[i].slice(0,15).reduce((s,v,j)=>(s[Math.floor(j/3)]+=v,s),[0,0,0,0,0]).join('</td><td>')}</td>`;
-  const tbl=`<div class="tablewrap"><table class="cardtable"><tr><th></th><th>R1</th><th>R2</th><th>R3</th><th>R4</th><th>R5</th></tr><tr><th>Du</th>${row(0)}</tr><tr><th>Bot</th>${row(1)}</tr></table></div>`;
-  endGame(a>b?'Gewonnen!':a===b?'Unentschieden':'Verloren',`${a} : ${b} Punkte nach ${ROUNDS} Runden gegen den Bot (${app.diff}).`,tbl);}
-function update(dt){
-  layout();
-  if(PAD.on){D.tAim.x=PAD.a*230;D.tAim.y=PAD.b*230;}
-  D.aim.x+=(D.tAim.x-D.aim.x)*Math.min(1,dt*12);D.aim.y+=(D.tAim.y-D.aim.y)*Math.min(1,dt*12);
-  if(!playing())return;
-  if(D.fly&&now-D.fly.t>=.32)land();
-  if(D.next&&now>=D.next.at){const fn=D.next.fn;D.next=null;fn();}
-  if(D.turn===1&&!D.fly&&D.dart<3&&!D.next&&now>D.wait)botThrow();}
-function M(x,y){return{x:cx+x*sc,y:cy+y*sc};}
-function draw(){
-  // Wand
-  const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#2a1f1a');g.addColorStop(1,'#140f0c');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
-  ctx.strokeStyle='rgba(255,255,255,.035)';ctx.lineWidth=1;for(let x=(cx%60)-60;x<W;x+=60){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
-  const lg=ctx.createRadialGradient(cx,cy-60*sc,10,cx,cy,Math.max(W,H)*.6);lg.addColorStop(0,'rgba(255,225,180,.22)');lg.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=lg;ctx.fillRect(0,0,W,H);
-  // Schrank und Schatten
-  ctx.fillStyle='rgba(0,0,0,.45)';ctx.beginPath();ctx.arc(cx+8*sc,cy+12*sc,240*sc,0,7);ctx.fill();
-  ctx.fillStyle='#16110e';ctx.beginPath();ctx.arc(cx,cy,232*sc,0,7);ctx.fill();
-  // Zahlenring
-  ctx.fillStyle='#111';ctx.beginPath();ctx.arc(cx,cy,226*sc,0,7);ctx.fill();
-  const seg=(r0,r1,i,col)=>{const a0=(-99+i*18)*Math.PI/180,a1=a0+18*Math.PI/180;ctx.beginPath();ctx.arc(cx,cy,r1*sc,a0,a1);ctx.arc(cx,cy,r0*sc,a1,a0,true);ctx.closePath();ctx.fillStyle=col;ctx.fill();};
-  for(let i=0;i<20;i++){const dark=i%2===0;
-    seg(15.9,99,i,dark?'#1b1b1b':'#efe2c4');seg(99,107,i,dark?'#d0283a':'#1f8a4c');seg(107,162,i,dark?'#1b1b1b':'#efe2c4');seg(162,170,i,dark?'#d0283a':'#1f8a4c');}
-  ctx.fillStyle='#1f8a4c';ctx.beginPath();ctx.arc(cx,cy,15.9*sc,0,7);ctx.fill();
-  ctx.fillStyle='#d0283a';ctx.beginPath();ctx.arc(cx,cy,6.35*sc,0,7);ctx.fill();
-  // Drähte
-  ctx.strokeStyle='rgba(200,205,210,.55)';ctx.lineWidth=Math.max(.6,1.1*sc);
-  for(const r of[6.35,15.9,99,107,162,170]){ctx.beginPath();ctx.arc(cx,cy,r*sc,0,7);ctx.stroke();}
-  for(let i=0;i<20;i++){const a=(-99+i*18)*Math.PI/180;ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*15.9*sc,cy+Math.sin(a)*15.9*sc);ctx.lineTo(cx+Math.cos(a)*170*sc,cy+Math.sin(a)*170*sc);ctx.stroke();}
-  ctx.fillStyle='#f3f3f3';ctx.font=`${Math.max(10,22*sc)}px ${getComputedStyle(document.documentElement).getPropertyValue('--display')}`;ctx.textAlign='center';ctx.textBaseline='middle';
-  for(let i=0;i<20;i++){const a=(-90+i*18)*Math.PI/180;ctx.fillText(ORDER[i],cx+Math.cos(a)*198*sc,cy+Math.sin(a)*198*sc);}
-  // Pfeile
-  for(const s of D.stuck)drawDart(s.x,s.y,s.who,1);
-  if(D.fly){const k=clamp((now-D.fly.t)/.32,0,1),e=1-Math.pow(1-k,2);
-    const sx=D.fly.who===0?0:160,sy=(H-cy)/sc+60;const x=sx+(D.fly.x-sx)*e,y=sy+(D.fly.y-sy)*e-Math.sin(k*Math.PI)*60;
-    drawDart(x,y,D.fly.who,1+(1-e)*2.2);}
-  // Fadenkreuz
-  if(playing()&&D.turn===0&&!D.fly&&D.dart<3&&(!PAD.on||PAD.grab)){const tr=tremor();const p=M(D.aim.x+tr.x,D.aim.y+tr.y);const rr=Math.max(10,14*sc);
-    ctx.strokeStyle='rgba(255,138,31,.95)';ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(p.x,p.y,rr,0,7);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(p.x-rr*1.7,p.y);ctx.lineTo(p.x-rr*.5,p.y);ctx.moveTo(p.x+rr*.5,p.y);ctx.lineTo(p.x+rr*1.7,p.y);
-    ctx.moveTo(p.x,p.y-rr*1.7);ctx.lineTo(p.x,p.y-rr*.5);ctx.moveTo(p.x,p.y+rr*.5);ctx.lineTo(p.x,p.y+rr*1.7);ctx.stroke();
-    ctx.fillStyle='#ff8a1f';ctx.beginPath();ctx.arc(p.x,p.y,2.5,0,7);ctx.fill();}
-  else if(playing()&&D.turn===0&&!D.fly&&D.dart<3&&PAD.on){ctx.fillStyle='rgba(255,255,255,.92)';ctx.font='bold 15px '+getComputedStyle(document.body).fontFamily;ctx.textAlign='center';
-    ctx.fillText('Display am Handy gedrückt halten, um einen Pfeil zu nehmen',cx,Math.min(H-74,cy+240*sc));}
-  // Pfeile übrig
-  ctx.textAlign='left';}
-function drawDart(x,y,who,s){const p=M(x,y);const L=Math.max(18,60*sc)*s;
-  ctx.save();ctx.translate(p.x,p.y);ctx.rotate(-.5);
-  ctx.strokeStyle='#bfc6cf';ctx.lineWidth=Math.max(1.5,2.2*sc*s);ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(0,L*.35);ctx.stroke();
-  ctx.strokeStyle='#3b3f45';ctx.lineWidth=Math.max(3,5*sc*s);ctx.beginPath();ctx.moveTo(0,L*.33);ctx.lineTo(0,L*.7);ctx.stroke();
-  ctx.fillStyle=who===0?'#ff8a1f':'#4f8fe0';ctx.beginPath();ctx.moveTo(0,L*.68);ctx.lineTo(-L*.2,L*1.02);ctx.lineTo(0,L*.92);ctx.lineTo(L*.2,L*1.02);ctx.closePath();ctx.fill();
-  ctx.fillStyle='rgba(0,0,0,.5)';ctx.beginPath();ctx.arc(0,0,Math.max(1.5,2*sc),0,7);ctx.fill();
-  ctx.restore();}
-function pointer(type,e){if(PAD.on)return;
-  D.tAim.x=(e.clientX-cx)/sc;D.tAim.y=(e.clientY-cy)/sc;
-  if(type==='down'){D.aim.x=D.tAim.x;D.aim.y=D.tAim.y;swing(.6+(Math.random()-.5)*.1);}}
-function key(e){const st=8;
-  if(e.key==='ArrowLeft')D.tAim.x-=st;if(e.key==='ArrowRight')D.tAim.x+=st;if(e.key==='ArrowUp')D.tAim.y-=st;if(e.key==='ArrowDown')D.tAim.y+=st;
-  if(e.key===' ')swing(.6);if(e.key.startsWith('Arrow')||e.key===' ')e.preventDefault();}
-function hud(){const left=D.turn===0?3-D.dart:0;
-  setHud2([['Runde',Math.min(D.round,ROUNDS)+'/'+ROUNDS],['Du',D.score[0]],['Bot',D.score[1]],['Pfeile','●'.repeat(left)+'○'.repeat(3-left)]]);}
-function start(){Object.assign(D,{round:1,score:[0,0],stuck:[],fly:null,next:null,log:[[],[]]});send({t:'score',s:'0 : 0'});turnStart(0);}
-return{start,update,draw,swing,pointer,key,hud,
-  lede:'Fünf Runden mit je drei Pfeilen gegen den Bot, gesteuert wie bei der Wii: Daumen aufs Handy-Display halten nimmt den Pfeil, dann zeigst du mit dem Handy aufs Ziel. Ausholen und mit einem Ruck nach vorn werfen. Zu schwach landet tiefer, zu hart höher.',
-  keys:'Ohne Handy: Maus zielt, Klick wirft. Tastatur: Pfeiltasten zielen, <kbd>Leertaste</kbd> wirft.'};
 }
 
 /* =========================================================
@@ -714,7 +588,7 @@ return{start,update,draw,swing,pointer,key,hud,
 /* =========================================================
    Steuerung des Ganzen
    ========================================================= */
-const GAMES={tt:makeTT(),darts:makeDarts(),golf:makeGolf()};
+const GAMES={tt:makeTT(),golf:makeGolf()};
 const cur=()=>GAMES[app.game];
 cv.addEventListener('pointermove',e=>{audioOn();cur().pointer('move',e);});
 cv.addEventListener('pointerdown',e=>{audioOn();if(app.mode==='play')cur().pointer('down',e);});
@@ -788,7 +662,7 @@ function startController(code){
   const golfThr=()=>50+(10-swingSens)*14;     // Drehrate, ab der ein Durchschwung zählt
   const pad=$('pad'),icon=$('paddleIcon'),hint=$('padHint');
   // Je Spiel: Schwelle (Faktor), Grundkraft, Kraftspanne
-  const CFG={tt:{mul:1,base:.35,span:1.2,name:'Schläger'},darts:{mul:.75,base:.15,span:1.6,name:'Dartpfeil'},golf:{mul:.4,base:0,span:2.2,name:'Putter'}};
+  const CFG={tt:{mul:1,base:.25,span:2.6,name:'Schläger'},darts:{mul:.75,base:.15,span:1.6,name:'Dartpfeil'},golf:{mul:.4,base:0,span:2.2,name:'Putter'}};
   const status=(s,t)=>{$('cDot').className='dot'+(s==='on'?' on':s==='wait'?' wait':'');$('cText').textContent=t;};
   const send=m=>{try{if(conn&&conn.open)conn.send(m);}catch(e){}};
   const now=()=>performance.now()/1000;
@@ -808,8 +682,6 @@ function startController(code){
     bt.onclick=()=>{document.querySelectorAll('#'+id+' button').forEach(x=>x.setAttribute('aria-pressed',String(x===bt)));cb(bt.dataset[attr]);setHint();};});}
   seg('modeSeg','m',mode,v=>{mode=v;store.set('mode',v);});
   seg('runSeg','r',run,v=>{run=v;store.set('run',v);});
-  seg('invSeg','i',String(inv),v=>{inv=v;store.set('inv',v);});
-  seg('invHSeg','i',String(invH),v=>{invH=v;store.set('invh',v);});
   const ts=$('tiltSens'),ss=$('swingSens');ts.value=tiltSens;ss.value=swingSens;$('tiltOut').textContent=tiltSens;$('swingOut').textContent=swingSens;
   ts.oninput=()=>{tiltSens=+ts.value;$('tiltOut').textContent=tiltSens;store.set('tilt',tiltSens);};
   ss.oninput=()=>{swingSens=+ss.value;$('swingOut').textContent=swingSens;store.set('swing',swingSens);};
