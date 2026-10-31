@@ -92,6 +92,8 @@ kbd{font-family:var(--body);font-size:12px;border:1px solid var(--edge);border-b
 #padScore{position:absolute;top:10px;left:0;right:0;text-align:center;font-family:var(--display);font-size:20px;font-variant-numeric:tabular-nums}
 #angleRead{position:absolute;top:12px;right:12px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 #powRead{position:absolute;top:12px;left:12px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.bigbtn{flex:1;padding:18px 10px;font-size:18px;font-weight:700;border-radius:12px;border:1px solid var(--edge);background:var(--arena-2);touch-action:none}
+.bigbtn:active,.bigbtn.on{background:var(--ball);color:#1a0d00;border-color:var(--ball)}
 .set{background:var(--card);border:1px solid var(--edge);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:12px}
 .set summary{cursor:pointer;font-weight:700;list-style:none;display:flex;justify-content:space-between}
 .set summary::-webkit-details-marker{display:none}
@@ -183,6 +185,10 @@ kbd{font-family:var(--body);font-size:12px;border:1px solid var(--edge);border-b
     </svg>
     <div id="padHint">Tippe auf „Verbinden“.</div>
   </div>
+  <div class="row" id="golfRow" hidden style="flex-wrap:nowrap">
+    <button class="bigbtn" id="turnL" type="button">◀ Links</button>
+    <button class="bigbtn" id="turnR" type="button">Rechts ▶</button>
+  </div>
   <div class="row" style="flex-wrap:nowrap">
     <button class="primary" id="cConnect" type="button" style="flex:1">Verbinden</button>
     <button class="ghost" id="cCalib" type="button">Kalibrieren</button>
@@ -248,7 +254,7 @@ let W=0,H=0,F=1,now=0;
 function resize(){const d=Math.min(2,window.devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;cv.style.width=W+'px';cv.style.height=H+'px';ctx.setTransform(d,0,0,d,0,0);F=Math.min(W*1.15,H*.95);}
 addEventListener('resize',resize);resize();
 const app={mode:'menu',game:'tt',diff:'mittel'};
-const PAD={a:0,b:0,auto:true,on:false};
+const PAD={a:0,b:0,auto:true,on:false,turn:0,back:0,ready:false};
 let toastTimer=0;
 function toast(big,small,ms){$('toastBig').textContent=big;$('toastSmall').textContent=small||'';$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),ms||1400);}
 function setHud2(cells){$('hud2b').innerHTML=cells.map(c=>`<div class="cell"><span>${c[0]}</span><b>${c[1]}</b></div>`).join('');}
@@ -605,7 +611,7 @@ function finish(){const t=total(),p=HOLES.reduce((a,h)=>a+h.par,0);
   const tbl=`<div class="tablewrap"><table class="cardtable"><tr><th>Loch</th>${HOLES.map((h,i)=>`<th>${i+1}</th>`).join('')}<th>Σ</th></tr><tr><th>Par</th>${HOLES.map(h=>`<td>${h.par}</td>`).join('')}<td>${p}</td></tr><tr><th>Du</th>${Gs.card.map(c=>`<td>${c}</td>`).join('')}<td><b>${t}</b></td></tr></table></div>`;
   endGame(t<=p?'Stark gespielt!':'Geschafft',`${t} Schläge auf ${HOLES.length} Löchern, ${rel(t-p)} zum Par.`,tbl);}
 function update(dt){layout();
-  if(PAD.on&&!Gs.moving)Gs.aim+=((Gs.base+PAD.a*1.5)-Gs.aim)*Math.min(1,dt*10);
+  if(PAD.on&&!Gs.moving&&PAD.turn)Gs.aim+=PAD.turn*.9*dt;
   if(!PAD.on&&Gs.mouse.on&&!Gs.moving){const b=M(Gs.ball.x,Gs.ball.y);Gs.aim=Math.atan2(Gs.mouse.y-b.y,Gs.mouse.x-b.x);Gs.mPow=clamp(Math.hypot(Gs.mouse.x-b.x,Gs.mouse.y-b.y)/(sc*6),.03,1);}
   if(!playing())return;
   if(Gs.moving){const n=10;for(let i=0;i<n&&Gs.moving;i++)stepBall(dt/n);
@@ -654,11 +660,14 @@ function draw(){const h=hole();
   const wv=Math.sin(now*4)*4;ctx.fillStyle='#ff8a1f';ctx.beginPath();ctx.moveTo(c.x,c.y-fh);ctx.quadraticCurveTo(c.x+fh*.3,c.y-fh+wv,c.x+fh*.55,c.y-fh+fh*.15+wv*.5);ctx.lineTo(c.x,c.y-fh+fh*.32);ctx.closePath();ctx.fill();
   ctx.fillStyle='#1a0d00';ctx.font=`bold ${Math.max(10,fh*.2)}px ${getComputedStyle(document.body).fontFamily}`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(Gs.i+1,c.x+fh*.2,c.y-fh+fh*.14);
   // Zielhilfe
-  if(playing()&&!Gs.moving&&!Gs.sunk&&!Gs.next){const len=(PAD.on?2.2:.4+Gs.mPow*4.5)*sc;
+  if(playing()&&!Gs.moving&&!Gs.sunk&&!Gs.next){const pw=PAD.on?PAD.back:Gs.mPow,v=.5+pw*8,len=clamp(v*v/2.5,.6,30)*sc*(PAD.on?1:.6);
     ctx.strokeStyle='rgba(255,255,255,.85)';ctx.lineWidth=2;ctx.setLineDash([6,7]);ctx.lineDashOffset=-now*20;
     ctx.beginPath();ctx.moveTo(bp.x+Math.cos(Gs.aim)*br*1.6,bp.y+Math.sin(Gs.aim)*br*1.6);const ex=bp.x+Math.cos(Gs.aim)*len,ey=bp.y+Math.sin(Gs.aim)*len;ctx.lineTo(ex,ey);ctx.stroke();ctx.setLineDash([]);
     ctx.fillStyle='rgba(255,255,255,.9)';ctx.beginPath();ctx.moveTo(ex+Math.cos(Gs.aim)*9,ey+Math.sin(Gs.aim)*9);ctx.lineTo(ex+Math.cos(Gs.aim+2.4)*8,ey+Math.sin(Gs.aim+2.4)*8);ctx.lineTo(ex+Math.cos(Gs.aim-2.4)*8,ey+Math.sin(Gs.aim-2.4)*8);ctx.closePath();ctx.fill();
-    if(!PAD.on){ctx.fillStyle='rgba(255,255,255,.9)';ctx.font='12px '+getComputedStyle(document.body).fontFamily;ctx.fillText('Kraft '+Math.round(Gs.mPow*100)+' %',ex,ey-16);}}
+    ctx.fillStyle='rgba(255,255,255,.95)';ctx.font='bold 13px '+getComputedStyle(document.body).fontFamily;ctx.textAlign='center';
+    if(!PAD.on)ctx.fillText('Kraft '+Math.round(Gs.mPow*100)+' %',ex,ey-16);
+    else if(!PAD.ready)ctx.fillText('Handy nach unten halten und stillhalten',bp.x,bp.y+br+22);
+    else ctx.fillText(PAD.back>.02?'Kraft '+Math.round(PAD.back*100)+' %':'Bereit: ausholen',bp.x,bp.y+br+22);}
   // Kraftanzeige nach dem Schlag
   if(now-Gs.lastPowT<1.8&&Gs.lastPow>=0){const a=clamp(1.8-(now-Gs.lastPowT),0,1),bw=Math.min(220,W-80),bx=(W-bw)/2,by=H-54-(parseFloat(getComputedStyle(document.documentElement).getPropertyValue('padding-bottom'))||0);
     ctx.globalAlpha=a;ctx.fillStyle='rgba(16,29,46,.9)';ctx.fillRect(bx-8,by-20,bw+16,34);ctx.fillStyle='#2a4562';ctx.fillRect(bx,by,bw,8);
@@ -674,7 +683,7 @@ function hud(){const done=Gs.card.length;
 function start(){Gs.i=0;Gs.card=[];Gs.next=null;layout();setupHole();}
 layout();Gs.ball={x:HOLES[0].tee[0],y:HOLES[0].tee[1],vx:0,vy:0};Gs.segs=buildSegs(HOLES[0]);
 return{start,update,draw,swing,pointer,key,hud,
-  lede:'Sechs Löcher Minigolf. Handy wie einen Putter vor dich halten: kippen dreht die Zielrichtung, der Schwung bestimmt die Kraft. Sanft schwingen für kurze Putts, kräftiger für lange.',
+  lede:'Sechs Löcher Minigolf, gesteuert wie bei der Wii: Richtung mit den Tasten ◀ ▶ am Handy einstellen, dann das Handy wie einen Putter nach unten halten, ausholen und durchschwingen. Je weiter du ausholst, desto fester der Schlag.',
   keys:'Ohne Handy: Maus zeigt Richtung und Kraft (je weiter weg, desto stärker), Klick schlägt. Tastatur: <kbd>←</kbd> <kbd>→</kbd> Richtung, <kbd>↑</kbd> <kbd>↓</kbd> Kraft, <kbd>Leertaste</kbd>.'};
 }
 
@@ -713,7 +722,7 @@ let conn=null;
 function send(m){try{if(conn&&conn.open)conn.send(m);}catch(e){}}
 function setConn(state,text){$('connDot').className='dot'+(state==='on'?' on':state==='wait'?' wait':'');$('connText').textContent=text;}
 function onPad(d){if(!d||typeof d!=='object')return;
-  if(d.t==='p'&&typeof d.a==='number'){PAD.a=clamp(d.a,-1,1);PAD.b=clamp(+d.b||0,-1,1);PAD.auto=!!d.auto;}
+  if(d.t==='p'&&typeof d.a==='number'){PAD.a=clamp(d.a,-1,1);PAD.b=clamp(+d.b||0,-1,1);PAD.auto=!!d.auto;PAD.turn=clamp(+d.turn||0,-1,1);PAD.back=clamp(+d.back||0,0,1);PAD.ready=!!d.ready;}
   else if(d.t==='s'&&typeof d.p==='number'){audioOn();cur().swing(d.p);}}
 function initHost(){
   if(!window.Peer){setConn('off','Handy-Verbindung konnte nicht geladen werden.');$('qr').textContent='Kein QR-Code';return;}
@@ -748,6 +757,9 @@ function startController(code){
   let conn=null,peer=null,mode=store.get('mode','motion'),run=store.get('run','auto'),inv=store.get('inv','0'),tiltSens=store.get('tilt',4),swingSens=store.get('swing',4);
   let roll=0,roll0=0,pitch=0,pitch0=0,gotSensor=false,lastSwing=0,freezeUntil=0,a=0,b=0,touchX=0,touchY=0,grav={x:0,y:0,z:0},game='tt';
   let win=null; // laufendes Schwung-Messfenster
+  const GP={g0:null,stillT:0,reT:0,maxBack:0,back:0};let turn=0;
+  const fullBack=()=>78-tiltSens*5;          // Grad Ausholweg für 100 % Kraft: 1 → 73°, 10 → 28°
+  const golfThr=()=>50+(10-swingSens)*14;     // Drehrate, ab der ein Durchschwung zählt
   const pad=$('pad'),icon=$('paddleIcon'),hint=$('padHint');
   // Je Spiel: Schwelle (Faktor), Grundkraft, Kraftspanne
   const CFG={tt:{mul:1,base:.35,span:1.2,name:'Schläger'},darts:{mul:.75,base:.15,span:1.6,name:'Dartpfeil'},golf:{mul:.4,base:0,span:2.2,name:'Putter'}};
@@ -760,11 +772,11 @@ function startController(code){
   function flash(){pad.classList.add('flash');setTimeout(()=>pad.classList.remove('flash'),120);}
   function fire(p){lastSwing=now();send({t:'s',p:clamp(p,0,1)});flash();$('powRead').textContent='Kraft '+Math.round(clamp(p,0,1)*100)+' %';}
   function setHint(){
-    $('cTitle').textContent=CFG[game].name;
+    $('cTitle').textContent=CFG[game].name;$('golfRow').hidden=game!=='golf';
     if(mode==='touch'){hint.textContent=game==='darts'?'Finger auflegen und zum Ziel ziehen, loslassen wirft.':game==='golf'?'Finger links/rechts dreht die Richtung. Nach oben wischen schlägt, schneller = stärker.':'Finger links/rechts = Schläger schräg stellen. Nach oben wischen oder tippen = schlagen.';return;}
     if(!gotSensor){hint.textContent='Keine Sensordaten. Sensoren erlauben oder Touch nutzen.';return;}
     hint.textContent=game==='darts'?'Handy hochkant halten. Kippen zielt links/rechts, Oberkante vor/zurück zielt hoch/runter. Kurzer Ruck nach vorn wirft.'
-      :game==='golf'?'Handy wie einen Putter halten. Kippen dreht die Richtung. Ausholen und schwingen, die Schwungstärke ist die Kraft.'
+      :game==='golf'?(GP.g0?'Bereit. Ausholen und durchschwingen, je weiter du ausholst, desto fester.':'Richtung mit ◀ ▶ einstellen. Dann Handy wie einen Putter nach unten halten und kurz stillhalten.')
       :run==='auto'?'Handy hochkant halten. Schräg kippen = Ball zur Seite lenken. Kräftig schwingen = schlagen.':'Kippen = Schläger bewegen. Kräftig schwingen = schlagen.';}
   function seg(id,attr,val,cb){document.querySelectorAll('#'+id+' button').forEach(bt=>{bt.setAttribute('aria-pressed',String(bt.dataset[attr]===val));
     bt.onclick=()=>{document.querySelectorAll('#'+id+' button').forEach(x=>x.setAttribute('aria-pressed',String(x===bt)));cb(bt.dataset[attr]);setHint();};});}
@@ -787,12 +799,27 @@ function startController(code){
       if(!gotSensor){gotSensor=true;roll0=roll;pitch0=pitch;setHint();}}
     if(mode!=='motion')return;
     const r=e.rotationRate||{};const mag=Math.hypot(r.alpha||0,r.beta||0,r.gamma||0);
+    if(game==='golf'){golfMotion(mag);return;}
     const ac=e.acceleration||{};const acc=Math.hypot(ac.x||0,ac.y||0,ac.z||0);
     const t=now();const thr=swingThr(),athr=accThr();
     const over=mag>thr||(ac.x!=null&&acc>athr);
     if(!win&&over&&t-lastSwing>.45){win={t,peak:0,apeak:0};freezeUntil=t+.45;}
     if(win){win.peak=Math.max(win.peak,mag);win.apeak=Math.max(win.apeak,acc);
       if(t-win.t>.14){const c=CFG[game];const p=c.base+Math.max((win.peak-thr)/(thr*c.span),(win.apeak-athr)/(athr*c.span));win=null;fire(p);}}});
+  // Golf wie beim echten Putten: Ausgangslage merken, Ausholwinkel messen, beim Durchschwung auslösen
+  function golfMotion(mag){const t=now();const n=Math.hypot(grav.x,grav.y,grav.z)||1;const u={x:grav.x/n,y:grav.y/n,z:grav.z/n};
+    if(!GP.g0){GP.back=0;
+      if(mag<25&&t-lastSwing>.8){if(!GP.stillT)GP.stillT=t;if(t-GP.stillT>.5){GP.g0=u;GP.maxBack=0;GP.reT=0;setHint();try{navigator.vibrate&&navigator.vibrate(15);}catch(e){}}}
+      else GP.stillT=0;return;}
+    const ang=Math.acos(clamp(u.x*GP.g0.x+u.y*GP.g0.y+u.z*GP.g0.z,-1,1))*180/Math.PI;
+    GP.back=Math.max(0,ang-2);if(GP.back>GP.maxBack)GP.maxBack=GP.back;
+    if(GP.maxBack>4&&GP.back<GP.maxBack*.6&&mag>golfThr()){
+      fire(clamp(GP.maxBack/fullBack(),.02,1));GP.g0=null;GP.stillT=0;GP.maxBack=0;GP.back=0;setHint();return;}
+    // Lange stillgehalten in anderer Lage: neu ausrichten
+    if(mag<12){if(!GP.reT)GP.reT=t;if(t-GP.reT>1.2&&GP.back>2){GP.g0=u;GP.maxBack=0;GP.back=0;GP.reT=0;}}else GP.reT=0;}
+  function hold(id,d){const el=$(id);const on=()=>{turn=d;el.classList.add('on');},off=()=>{if(turn===d)turn=0;el.classList.remove('on');};
+    el.addEventListener('pointerdown',e=>{e.preventDefault();on();});['pointerup','pointerleave','pointercancel'].forEach(ev=>el.addEventListener(ev,off));}
+  hold('turnL',-1);hold('turnR',1);
   addEventListener('deviceorientation',e=>{if(e.gamma==null||gotSensor)return;roll=e.gamma;pitch=(e.beta||0)-90;});
 
   $('cConnect').addEventListener('click',async()=>{
@@ -830,9 +857,11 @@ function startController(code){
       if(now()<freezeUntil){ta=a;tb=b;}
     }else{ta=touchX;tb=touchY;}
     const k=game==='darts'?.22:.35;a+=(ta-a)*k;b+=(tb-b)*k;
-    icon.style.transform=`rotate(${a*45}deg)`;
-    $('angleRead').textContent=Math.round(a*45)+'°';
-    send({t:'p',a,b,auto:run==='auto'});},33);
+    let back=0;
+    if(game==='golf'&&mode==='motion'){back=clamp(GP.back/fullBack(),0,1);icon.style.transform=`rotate(${180+back*70}deg)`;
+      $('angleRead').textContent=GP.g0?'Bereit':'Stillhalten';$('powRead').textContent=GP.g0?'Ausholen '+Math.round(back*100)+' %':$('powRead').textContent;}
+    else{icon.style.transform=`rotate(${a*45}deg)`;$('angleRead').textContent=Math.round(a*45)+'°';}
+    send({t:'p',a,b,auto:run==='auto',turn,back,ready:game!=='golf'||mode!=='motion'||!!GP.g0});},33);
   setHint();
 }
 </script>
